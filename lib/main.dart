@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:memento_mori_ft/screens/webview_screen.dart';
+import 'screens/home_screen.dart'; // 홈 화면을 가져옵니다.
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const InAppWebViewScreen(), // 홈 화면을 설정합니다.
+      home: const HomeScreen(), // 홈 화면을 설정합니다.
     );
   }
 }
