@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../widgets/quote_display.dart'; // 분리된 위젯을 가져옵니다.
-import 'dart:math';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -10,44 +11,79 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<String> quotes = [
-    "삶이 있는 한 희망은 있다.",
-    "산다는 것 그것은 치열한 전투이다.",
-    "하루에 3시간을 걸으면 7년 후에 지구를 한 바퀴 돌 수 있다.",
-    "언제나 현재에 집중할 수 있다면 행복할 것이다.",
-    "진정으로 웃으려면 고통을 참아야 하며, 나아가 고통을 즐길 줄 알아야 해.",
-    "형민"
-  ];
-
-  late String currentQuote;
+  String currentQuote = "명언을 불러오는 중...";
+  String author = "";
 
   @override
   void initState() {
     super.initState();
-    _showRandomQuote(); // 초기화 시 랜덤 명언 설정
+    _fetchRandomQuote(); // 초기화 시 랜덤 명언 설정
   }
 
-  void _showRandomQuote() {
-    final randomIndex = Random().nextInt(quotes.length);
+  Future<void> _fetchRandomQuote() async {
+    final response = await http
+        .get(Uri.parse('https://korean-advice-open-api.vercel.app/api/advice'));
 
-    setState(() {
-      currentQuote = quotes[randomIndex];
-    });
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      setState(() {
+        currentQuote = data['message'];
+        author = data['author'];
+      });
+    } else {
+      setState(() {
+        currentQuote = "명언을 불러오지 못했습니다.";
+        author = "";
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('랜덤 명언 앱')),
+      appBar: AppBar(
+        title: const Text(
+          '랜덤 명언 앱',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Colors.black,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             QuoteDisplay(quote: currentQuote), // 분리된 위젯을 사용합니다.
+            if (author.isNotEmpty) // 작가 이름이 있을 경우에만 표시
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '- $author',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _showRandomQuote,
-              child: const Text('명언 보기'),
+              onPressed: _fetchRandomQuote,
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                      12), // Custom style: rounded corners
+                ),
+              ),
+              child: const Text('랜덤 명언 보기'),
             ),
           ],
         ),

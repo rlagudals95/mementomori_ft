@@ -7,10 +7,16 @@ class QuoteDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      quote,
-      textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 24),
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: Text(
+          quote,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24),
+        ),
+      ),
     );
   }
 }
