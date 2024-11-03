@@ -2,28 +2,26 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class MementoMoriScreen extends StatefulWidget {
-  const MementoMoriScreen({Key? key}) : super(key: key);
+class MementomoriScreen extends StatefulWidget {
+  const MementomoriScreen({Key? key}) : super(key: key);
 
   @override
-  _MementoMoriScreenState createState() => _MementoMoriScreenState();
+  _MementomoriScreenState createState() => _MementomoriScreenState();
 }
 
-class _MementoMoriScreenState extends State<MementoMoriScreen> {
+class _MementomoriScreenState extends State<MementomoriScreen> {
   final TextEditingController _birthDateController =
       TextEditingController(); // 생일 입력 컨트롤러
   String _gender = 'Male'; // 기본 성별 설정
-  int _remainingSeconds = 0; // 남은 수명 초
+  DateTime? _targetDate;
   Timer? _timer; // 타이머 객체
   bool _isCountdownActive = false; // 카운트다운 활성화 여부
+  bool _isLoading = true; // 로딩 상태를 관리하는 변수
 
   @override
   void initState() {
     super.initState();
-
-    print('_isCountdownActive');
-    print(_isCountdownActive);
-    _loadData(); // 저장된 데이터 불러오기
+    _loadData();
   }
 
   @override
@@ -38,13 +36,12 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? birthDateString = prefs.getString('birthDate');
+      String? targetDateString = prefs.getString('targetDate');
 
-      print('birthDateString');
-      print(birthDateString);
-      if (birthDateString != null) {
+      if (birthDateString != null && targetDateString != null) {
         _birthDateController.text = birthDateString;
         _gender = prefs.getString('gender') ?? 'Male';
-        _remainingSeconds = prefs.getInt('remainingSeconds') ?? 0;
+        _targetDate = DateTime.parse(targetDateString);
         _isCountdownActive = prefs.getBool('isCountdownActive') ?? false;
 
         if (_isCountdownActive) {
@@ -53,6 +50,10 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
       }
     } catch (e) {
       print('Failed to load data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // 데이터 로드가 완료되면 로딩 상태를 false로 설정
+      });
     }
   }
 
@@ -61,25 +62,47 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('birthDate', _birthDateController.text);
     await prefs.setString('gender', _gender);
-    await prefs.setInt('remainingSeconds', _remainingSeconds);
+    if (_targetDate != null) {
+      await prefs.setString('targetDate', _targetDate!.toIso8601String());
+    }
     await prefs.setBool('isCountdownActive', _isCountdownActive);
   }
 
   // 카운트다운 시작
   void _startCountdown() {
-    if (_timer != null) return; // 이미 타이머가 실행 중이면 중복 실행 방지
+    if (_timer != null) {
+      _timer!.cancel(); // 이미 타이머가 실행 중이면 타이머 해제
+    }
 
     if (!_isCountdownActive) {
-      _calculateRemainingSeconds(); // 남은 시간 계산
+      _calculateTargetDate();
       _isCountdownActive = true;
       _saveData(); // 데이터 저장
     }
 
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       setState(() {
-        if (_remainingSeconds > 0) {
-          _remainingSeconds--; // 매 초마다 남은 시간 감소
-          _saveData(); // 데이터 저장
+        if (_targetDate != null && DateTime.now().isBefore(_targetDate!)) {
+          _saveData();
+        } else if (DateTime.now().isAfter(_targetDate!)) {
+          // 남은 수명이 없는 경우 처리
+          _isCountdownActive = false;
+          _timer?.cancel();
+          showModalBottomSheet(
+            context: context,
+            builder: (BuildContext context) {
+              return Container(
+                height: 200,
+                color: Colors.white,
+                child: Center(
+                  child: Text(
+                    '남은 수명이 없습니다.',
+                    style: TextStyle(fontSize: 24, color: Colors.black),
+                  ),
+                ),
+              );
+            },
+          );
         } else {
           timer.cancel(); // 시간이 다 되면 타이머 취소
         }
@@ -91,10 +114,10 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
   void _reset() {
     _timer?.cancel();
     setState(() {
-      _remainingSeconds = 0;
       _birthDateController.clear();
       _gender = 'Male';
       _isCountdownActive = false;
+      _targetDate = null;
     });
     _clearData(); // 저장된 데이터 제거
   }
@@ -104,7 +127,7 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('birthDate');
     await prefs.remove('gender');
-    await prefs.remove('remainingSeconds');
+    await prefs.remove('targetDate');
     await prefs.remove('isCountdownActive');
   }
 
@@ -124,71 +147,108 @@ class _MementoMoriScreenState extends State<MementoMoriScreen> {
   }
 
   // 남은 시간 계산
-  void _calculateRemainingSeconds() {
+  void _calculateTargetDate() {
     DateTime birthDate = DateTime.parse(_birthDateController.text);
     int lifeExpectancy = _gender == 'Male' ? 79 : 83; // 성별에 따른 평균 수명
-    DateTime deathDate = DateTime(
+    _targetDate = DateTime(
         birthDate.year + lifeExpectancy, birthDate.month, birthDate.day);
-    _remainingSeconds = deathDate.difference(DateTime.now()).inSeconds;
+  }
+
+  int _calculateRemainingSeconds() {
+    if (_targetDate == null) return 0;
+    return _targetDate!.difference(DateTime.now()).inSeconds;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: _isCountdownActive
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Remaining Life: $_remainingSeconds seconds',
-                    style: TextStyle(fontSize: 24),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _reset,
-                    child: Text('Reset'),
-                  ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    controller: _birthDateController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter your birth date (YYYY-MM-DD)',
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.calendar_today),
-                        onPressed: () => _selectDate(context),
-                      ),
-                    ),
-                    readOnly: true,
-                  ),
-                  DropdownButton<String>(
-                    value: _gender,
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _gender = newValue!;
-                      });
-                    },
-                    items: <String>['Male', 'Female']
-                        .map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _startCountdown,
-                    child: Text('Start Countdown'),
-                  ),
-                ],
-              ),
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator()) // 로딩 중일 때 로딩 인디케이터 표시
+              : _isCountdownActive
+                  ? _buildCountdownView()
+                  : _buildInputView(),
+        ),
       ),
+    );
+  }
+
+  Widget _buildCountdownView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '남은 수명',
+          style: TextStyle(fontSize: 16),
+        ),
+        SizedBox(height: 10),
+        TweenAnimationBuilder<int>(
+          tween: IntTween(
+              begin: _calculateRemainingSeconds(),
+              end: _calculateRemainingSeconds()),
+          duration: Duration(seconds: 1),
+          builder: (context, value, child) {
+            return Text(
+              '$value',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            );
+          },
+          onEnd: () {
+            setState(() {});
+          },
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _reset,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white, // 버튼 배경색을 흰색으로 설정
+          ),
+          child: Icon(Icons.restart_alt),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextField(
+          controller: _birthDateController,
+          decoration: InputDecoration(
+            labelText: 'Enter your birth date (YYYY-MM-DD)',
+            suffixIcon: IconButton(
+              icon: Icon(Icons.calendar_today),
+              onPressed: () => _selectDate(context),
+            ),
+          ),
+          readOnly: true,
+        ),
+        DropdownButton<String>(
+          value: _gender,
+          onChanged: (String? newValue) {
+            setState(() {
+              _gender = newValue!;
+            });
+          },
+          items: <String>['Male', 'Female']
+              .map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _startCountdown,
+          child: Text('Start Countdown'),
+        ),
+      ],
     );
   }
 }

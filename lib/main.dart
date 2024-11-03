@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _pages = <Widget>[
     MainScreen(),
-    MementoMoriScreen(),
+    MementomoriScreen(),
     // Text('Profile Page'),
   ];
 
