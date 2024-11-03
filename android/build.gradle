@@ -1,3 +1,9 @@
+// 이 맨위에 주석코드는 왜 필요하죠?
+// buildscript {
+//     dependencies {
+//         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22'
+//     }
+// }
 allprojects {
     repositories {
         google()
