@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:memento_mori_ft/screens/main_screen.dart';
+import 'package:memento_mori_ft/screens/mementomori_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,8 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _pages = <Widget>[
     MainScreen(),
-    Text('Search Page'),
-    Text('Profile Page'),
+    MementoMoriScreen(),
+    // Text('Profile Page'),
   ];
 
   void _onItemTapped(int index) {
@@ -38,18 +39,18 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
 
-    if (index == 1) {
-      // 예: 바텀 시트 표시
-      showModalBottomSheet(
-        context: context,
-        builder: (BuildContext context) {
-          return Container(
-            height: 200,
-            color: Colors.white,
-          );
-        },
-      );
-    }
+    // if (index == 1) {
+    //   // 예: 바텀 시트 표시
+    //   showModalBottomSheet(
+    //     context: context,
+    //     builder: (BuildContext context) {
+    //       return Container(
+    //         height: 200,
+    //         color: Colors.white,
+    //       );
+    //     },
+    //   );
+    // }
   }
 
   @override
@@ -67,13 +68,13 @@ class _HomeScreenState extends State<HomeScreen> {
             label: '',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
+            icon: Icon(Icons.access_time_filled),
             label: '',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '',
-          ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.person),
+          //   label: '',
+          // ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
